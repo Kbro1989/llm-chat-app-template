@@ -1,21 +1,42 @@
-/**
- * For more details on how to configure Wrangler, refer to:
- * https://developers.cloudflare.com/workers/wrangler/configuration/
- */ {
+{
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "llm-chat-app-template",
   "main": "src/index.ts",
-  "compatibility_date": "2025-04-01",
+  "compatibility_date": "2025-10-03",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+
   "assets": {
     "binding": "ASSETS",
     "directory": "./public"
   },
+
   "observability": {
     "enabled": true
   },
+
   "ai": {
     "binding": "AI"
   },
+
+  // 👇 Add your custom connections here
+  "vars": {
+    "AI_LIBRARY_URL": "https://chanfana-openapi-template.kristain33rs.workers.dev"
+  },
+
+  "kv_namespaces": [
+    {
+      "binding": "CHAT_SESSIONS",
+      "id": "your-kv-id-here"
+    }
+  ],
+
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "chat_memory",
+      "database_id": "your-d1-id-here"
+    }
+  ],
+
   "upload_source_maps": true
 }
