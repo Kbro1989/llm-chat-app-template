@@ -1,40 +1,79 @@
-// Add to switch-case in fetch
-case "/api/project":
-  if (request.method === "POST") return handleProjectRequest(request, env);
-  if (request.method === "GET") return handleProjectList(env);
-  return new Response("Method not allowed", { status: 405 });
+import type { Env, ChatMessage, BuildLog } from "./types";
+import imageHandler from "./image";
+import globeHandler from "./globe";
 
-// ---- Project Management ----
-async function handleProjectRequest(request: Request, env: Env): Promise<Response> {
+const MODEL_ID = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+const SYSTEM_PROMPT = "You are a helpful assistant. Provide concise and accurate responses.";
+
+export default {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+
+    // Serve static assets
+    if (url.pathname === "/" || !url.pathname.startsWith("/api/")) {
+      return env.ASSETS.fetch(request);
+    }
+
+    // Chat
+    if (url.pathname === "/api/chat") {
+      if (request.method === "POST") return handleChat(request, env);
+      return new Response("Method Not Allowed", { status: 405 });
+    }
+
+    // Text-to-image
+    if (url.pathname.startsWith("/api/image")) {
+      return imageHandler(request, env);
+    }
+
+    // Multiplayer globe
+    if (url.pathname.startsWith("/api/globe")) {
+      return globeHandler(request, env);
+    }
+
+    // Build logs
+    if (url.pathname === "/api/build-logs") {
+      if (request.method === "POST") return handleBuildLogInsert(request, env);
+      if (request.method === "GET") return handleBuildLogFetch(env);
+    }
+
+    return new Response("Not Found", { status: 404 });
+  },
+} satisfies ExportedHandler<Env>;
+
+/** LLM Chat */
+async function handleChat(request: Request, env: Env): Promise<Response> {
+  const { messages = [] } = await request.json() as { messages: ChatMessage[] };
+  if (!messages.some(m => m.role === "system")) {
+    messages.unshift({ role: "system", content: SYSTEM_PROMPT });
+  }
+
+  return env.AI.run(MODEL_ID, { messages, max_tokens: 1024 }, { returnRawResponse: true });
+}
+
+/** Build Logs */
+async function handleBuildLogInsert(request: Request, env: Env): Promise<Response> {
   try {
-    const { path, content } = await request.json();
-    
-    if (!path) return new Response(JSON.stringify({ error: "Missing path" }), { status: 400 });
-
-    // Write/update file in KV
-    await env.KV_MEMORY.put(path, content);
-
-    // Log action in D1
-    await env.D1_DB.prepare(
-      "INSERT INTO project_log (timestamp, path, action) VALUES (?, ?, ?)"
-    ).bind(Date.now(), path, "update").run();
-
-    // Optionally: trigger GitHub workflow via API
-    // await triggerGitHubBuild(path, content);
-
-    return new Response(JSON.stringify({ success: true, path }), { headers: { "content-type": "application/json" } });
-
+    const log = await request.json() as BuildLog;
+    await env.D1.prepare(
+      `INSERT INTO build_logs
+      (id, worker_name, commit_hash, branch, status, started_at, finished_at, duration_ms, log_content)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run([
+      log.id, log.worker_name, log.commit_hash, log.branch,
+      log.status, log.started_at, log.finished_at,
+      log.duration_ms, log.log_content
+    ]);
+    return new Response(JSON.stringify({ success: true }), { status: 200 });
   } catch (err) {
-    console.error(err);
-    return new Response(JSON.stringify({ error: "Project update failed" }), { status: 500, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
   }
 }
 
-async function handleProjectList(env: Env): Promise<Response> {
+async function handleBuildLogFetch(env: Env): Promise<Response> {
   try {
-    const fileTreeJson = await env.KV_MEMORY.get("file_tree");
-    return new Response(fileTreeJson || "{}", { headers: { "content-type": "application/json" } });
+    const result = await env.D1.prepare("SELECT * FROM build_logs ORDER BY started_at DESC LIMIT 100").all();
+    return new Response(JSON.stringify(result.results), { status: 200 });
   } catch (err) {
-    return new Response(JSON.stringify({ error: "Failed to fetch project files" }), { status: 500, headers: { "content-type": "application/json" } });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
   }
 }
