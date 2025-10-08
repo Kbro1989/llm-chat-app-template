@@ -1,11 +1,6 @@
 /**
  * Wrangler configuration for LLM Chat App Template
- * Includes:
- * - D1 database binding
- * - KV namespace for AI memory
- * - AI binding for chat
- * - Static assets
- * - Observability enabled
+ * Unified AI, D1, KV memory, multiple AI endpoints, static assets, observability
  */
 
 {
@@ -13,21 +8,42 @@
   "name": "llm-chat-app-template",
   "main": "src/index.ts",
   "compatibility_date": "2025-04-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
+  ],
 
+  // Static assets binding
   "assets": {
     "binding": "ASSETS",
     "directory": "./public"
   },
 
+  // Observability/logging
   "observability": {
     "enabled": true
   },
 
+  // Primary AI binding
   "ai": {
     "binding": "AI"
   },
 
+  // Additional free Cloudflare AI endpoints
+  "ai_endpoints": [
+    {
+      "binding": "TEXT_TO_IMAGE",
+      "model": "@cf/stable-diffusion-v1.5",
+      "max_tokens": 2048
+    },
+    {
+      "binding": "MULTIPLAYER_GLOBE",
+      "model": "@cf/multiplayer-globe",
+      "max_tokens": 2048
+    }
+  ],
+
+  // D1 database binding
   "d1_databases": [
     {
       "binding": "DB",
@@ -35,6 +51,7 @@
     }
   ],
 
+  // KV namespaces for AI memory / session storage
   "kv_namespaces": [
     {
       "binding": "AI_MEMORY",
@@ -42,5 +59,6 @@
     }
   ],
 
+  // Optional: upload TypeScript source maps for debugging
   "upload_source_maps": true
 }
