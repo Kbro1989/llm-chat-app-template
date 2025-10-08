@@ -1,6 +1,5 @@
-import type { Env } from "./types";
-
-export default async function globeHandler(request: Request, env: Env): Promise<Response> {
-  // Implement multiplayer globe logic here
-  return new Response(JSON.stringify({ status: "globe endpoint placeholder" }), { status: 200 });
+export async function generateLore(lat: number, lon: number) {
+  const location = `Lat: ${lat}, Lon: ${lon}`;
+  const lore = `At ${location}, the rift between realities hums with ancient echoes...`;
+  return lore;
 }
