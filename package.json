@@ -34,3 +34,12 @@
     "test": "vitest"
   }
 }
+{
+  "scripts": {
+    "deploy": "wrangler deploy && npm run postbuild",
+    "postbuild": "node ./scripts/postbuild.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
