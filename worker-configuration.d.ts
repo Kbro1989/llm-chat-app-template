@@ -7328,3 +7328,17 @@ declare abstract class WorkflowInstance {
         payload: unknown;
     }): Promise<void>;
 }
+// D1 Database bindings for chat storage
+interface Env {
+  D1_CHAT_DB: D1Database;
+  // existing bindings like LLM_API, etc.
+}
+
+// Optional: helper types for chat entries
+interface ChatEntry {
+  id: number;
+  session_id: string;
+  role: string;
+  content: string;
+  timestamp?: string;
+}
